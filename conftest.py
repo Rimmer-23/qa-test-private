@@ -8,28 +8,28 @@ DB_ORIGINAL = "database/original.db"
 
 @pytest.fixture(scope="session")
 def original_and_randomized_dbs(tmp_path_factory):
-    # Создаём временную папку
+    # create a temporary directory
     temp_dir = tmp_path_factory.mktemp("data")
     randomized_db_path = temp_dir / "randomized.db"
 
-    # Копируем оригинальную БД
+    # Copy the original database
     shutil.copy(DB_ORIGINAL, randomized_db_path)
 
-    # Подключаемся к копии
+    # Connect to the copied database
     conn = sqlite3.connect(randomized_db_path)
     cursor = conn.cursor()
 
-    # Получаем список всех кораблей
+    # retrieve all ships
     ships = cursor.execute("SELECT * FROM ships").fetchall()
 
     for ship in ships:
         ship_name, weapon_id, hull_id, engine_id = ship
 
-        # Выбираем случайно: менять компонент или параметр
+        # Randomly choose: swap a component or modify parameter values
         mode = random.choice(["swap_component", "modify_values"])
 
         if mode == "swap_component":
-            # Меняем один из компонентов на случайный
+            # Replace one of the components (weapon, hull, engine) with a random one
             part = random.choice(["weapon", "hull", "engine"])
             table = part + "s"
             new_id = cursor.execute(f"""
@@ -43,12 +43,13 @@ def original_and_randomized_dbs(tmp_path_factory):
             """, (new_id, ship_name))
 
         else:  # modify_values
+            # For each component, change one random parameter to a new value
             for part, table, comp_id in [
                 ("weapon", "weapons", weapon_id),
-                ("hull", "hulls", hull_id),
+                 ("hull", "hulls", hull_id),
                 ("engine", "engines", engine_id)
             ]:
-                # Получаем список всех полей (кроме текстового ключа)
+                # Get all numeric fields (skip primary key)
                 fields = [row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()][1:]
                 param = random.choice(fields)
                 value = random.randint(1, 20)
